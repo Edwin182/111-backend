@@ -1,10 +1,12 @@
 from flask import Flask, jsonify, request
 import sqlite3
+import json
 
 app = Flask(__name__)   # Instance of Flask 
 
 
 DB_NAME = "online-store.db"
+ALLOWED_CATEGORIES = {"electronics", "education", "food"} # SET
 
 
 def init_db():
@@ -117,6 +119,71 @@ def get_product_by_id(product_id):
     }), 200
 
 
+# UPDATE http://127.0.0.1:5000/api/products/<2>
+@app.put("/api/products/<int:product_id>")
+def update_product_by_id(product_id):
+    # logic here
+    updated_product = request.get_json()
+    name = updated_product["name"]
+    price = updated_product["price"]
+    category = updated_product["category"]
+    image = updated_product["image"]
+
+    if category not in ALLOWED_CATEGORIES: 
+        return jsonify({
+            "success": False,
+            "message": "Invalid category"
+        }), 400     # bad request 
+
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM products WHERE id=?", (product_id,))
+
+    if not cursor.fetchone():
+        connection.close()
+        return jsonify({
+            "success": False,
+            "message": "Product not found"
+        }), 404
+
+
+    cursor.execute("UPDATE products SET name=?, price=?, category=?, image=? WHERE id=?", (name, price, category, image, product_id))
+    connection.commit()
+    connection.close()
+
+    return jsonify({
+        "success": True,
+        "message": "product updated successfully"
+    }), 200
+
+
+
+# DELETE http://127.0.0.1:5000/api/products/<>
+@app.delete("/api/products/<int:product_id>")
+def delete_product_by_id(product_id):
+    # logic here
+
+    # DELETE FROM products WHERE id = ?
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT * FROM products WHERE id=?", (product_id,))
+    if not cursor.fetchone():
+        return jsonify({
+            "success": False,
+            "message": "Product not found"
+        }), 404
+
+    cursor.execute("DELETE FROM products WHERE id=?", (product_id,))
+    connection.commit()
+    connection.close()  
+
+    return jsonify({
+        "success": True,
+        "message": "product deleted successfully"
+    }), 200     #204 No content 
+
+
 # ---------- COUPONS ---------------
 @app.post("/api/coupons")
 def create_coupon():
@@ -191,6 +258,66 @@ def get_coupon_by_id(coupon_id):
         "message": "coupon retrieved successfully",
         "data": coupon
     }), 200
+
+
+# UPDATE http://127.0.0.1:5000/api/coupons/<2>
+@app.put("/api/coupons/<int:coupon_id>")
+def update_coupon_by_id(coupon_id):
+    print("RAW BODY:", repr(request.get_data(as_text=True)))
+    # logic here
+    updated_coupon = request.get_json()
+    print("PARSED BODY:", repr(updated_coupon))
+    print("BODY TYPE:", type(updated_coupon))
+    code = updated_coupon["code"]
+    discount = updated_coupon["discount"]
+    
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM coupons WHERE id=?", (coupon_id,))
+
+    if not cursor.fetchone():
+        connection.close()
+        return jsonify({
+            "success": False,
+            "message": "Coupon not found"
+        }), 404
+
+
+    cursor.execute("UPDATE coupons SET code=?, discount=? WHERE id=?", (code, discount, coupon_id))
+    connection.commit()
+    connection.close()
+
+    return jsonify({
+        "success": True,
+        "message": "coupon updated successfully"
+    }), 200
+
+
+
+# DELETE http://127.0.0.1:5000/api/coupons/<>
+@app.delete("/api/coupons/<int:coupon_id>")
+def delete_coupon_by_id(coupon_id):
+    # logic here
+
+    # DELETE FROM coupons WHERE id = ?
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT * FROM coupons WHERE id=?", (coupon_id,))
+    if not cursor.fetchone():
+        return jsonify({
+            "success": False,
+            "message": "Coupon not found"
+        }), 404
+
+    cursor.execute("DELETE FROM coupons WHERE id=?", (coupon_id,))
+    connection.commit()
+    connection.close()  
+
+    return jsonify({
+        "success": True,
+        "message": "coupon deleted successfully"
+    }), 200     #204 No content 
 
 
 init_db()
